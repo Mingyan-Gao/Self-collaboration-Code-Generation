@@ -14,7 +14,7 @@ parser.add_argument('--lang', type=str, default='python')
 parser.add_argument('--output_path', type=str, default='output.jsonl')
 
 parser.add_argument('--signature', action='store_true')
-parser.add_argument('--model', type=str, default='gpt-3.5-turbo-0301')
+parser.add_argument('--model', type=str, default='gemini-2.0-flash')
 parser.add_argument('--max_round', type=int, default=2)
 
 parser.add_argument('--max_tokens', type=int, default=512) 
@@ -39,7 +39,7 @@ if __name__ == '__main__':
         if args.lang == 'python':
             dataset = load_dataset("openai_humaneval")
             dataset_key = ["test"]
-
+    fail_list = []
     with open(OUTPUT_PATH, 'w+') as f:
         for key in dataset_key:
             pbar = tqdm.tqdm(dataset[key], total=len(dataset[key]))
@@ -48,24 +48,29 @@ if __name__ == '__main__':
                 if args.dataset == 'humaneval':
                     method_name = task['entry_point']
                     before_func, signature, intent, public_test_case = prompt_split_humaneval(task['prompt'],method_name)
+                    
                     args.signature = True
                     if args.signature:
                         intent = task['prompt']
                     
                     test = task['test']
 
+                #print("task_id: ", task['task_id'])
                 try:
                     session = Session(TEAM, ANALYST, PYTHON_DEVELOPER, TESTER,requirement=intent, model=args.model, majority=args.majority, 
                                     max_tokens=args.max_tokens, temperature=args.temperature, 
-                                    top_p=args.top_p, max_round=args.max_round, before_func=before_func)
+                                    top_p=args.top_p, max_round=args.max_round, before_func=before_func, task_id=task['task_id'])
                     
-                    code, session_history = session.run_session()
+                    code, session_history = session.run_analyst_coder()
 
                 except RuntimeError as e:
                     print(str(e))
                     print("task-%d fail"%(task['task_id']))
                     fail_list.append(task['task_id'])
                     continue
+                except BaseException as e:
+                    print("task-%d fail"%(task['task_id']))
+                    print(str(e))
 
                 if  code == "error":
                     continue

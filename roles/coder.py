@@ -11,7 +11,7 @@ from utils import code_truncate, construct_system_message
 from roles.instruction import INSTRUCTPLAN, INSTRUCTREPORT, INSTRUCTCODE
 
 class Coder(object):
-    def __init__(self, TEAM, PYTHON_DEVELOPER, requirement, model='gpt-3.5-turbo-0301', majority=1, max_tokens=512,
+    def __init__(self, TEAM, PYTHON_DEVELOPER, requirement, model='gemini-2.0-flash', majority=1, max_tokens=512,
                                 temperature=0.0, top_p=1.0):
         self.model = model
         self.majority = majority
@@ -42,12 +42,18 @@ class Coder(object):
             time.sleep(5)
             return "error"
         
-        if 'gpt' not in self.model:
-            generation = responses[0][responses[0].find("def"):]
-            tem = [s for s in generation.split('\n\n') if 'def ' in s or s[:1] == ' ']
-            code = '\n\n'.join(tem).strip('```').strip()
-        else:
-            code = code_truncate(responses[0])
+        # HumanEval Style
+        # if 'gpt' not in self.model:
+        #     generation = responses[0][responses[0].find("def"):]
+        #     tem = [s for s in generation.split('\n\n') if 'def ' in s or s[:1] == ' ']
+        #     code = '\n\n'.join(tem).strip('```').strip()
+        # else:
+        #     code = code_truncate(responses[0])
+
+        # DS-1000 Style
+        code=responses[0]
+
+        
         
         self.history_message = self.history_message[:-1]
         self.history_message_append(code, "assistant")
@@ -57,7 +63,7 @@ class Coder(object):
     def history_message_append(self, system_message, role="user"):
         self.history_message.append({
             "role": role,
-            "content": system_message
+            "parts": [system_message]
         })
         
     def construct_with_report(self, report, is_init=False):

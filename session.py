@@ -2,11 +2,12 @@ from roles import Analyst, Coder, Tester
 from utils import find_method_name
 import time
 from utils import code_truncate
+import traceback
 
 
 class Session(object):
-    def __init__(self, TEAM, ANALYST, PYTHON_DEVELOPER, TESTER, requirement, model='gpt-3.5-turbo-0301', majority=1, max_tokens=512,
-                                temperature=0.0, top_p=1.0, max_round=4, before_func=''):
+    def __init__(self, TEAM, ANALYST, PYTHON_DEVELOPER, TESTER, requirement, model='gemini-2.0-flash', majority=1, max_tokens=512,
+                                temperature=0.0, top_p=1.0, max_round=4, before_func='', task_id=''):
 
         self.session_history = {}
         self.max_round = max_round
@@ -15,9 +16,11 @@ class Session(object):
         self.analyst = Analyst(TEAM, ANALYST, requirement, model, majority, max_tokens, temperature, top_p)
         self.coder = Coder(TEAM, PYTHON_DEVELOPER, requirement, model, majority, max_tokens, temperature, top_p)
         self.tester = Tester(TEAM, TESTER, requirement, model, majority, max_tokens, temperature, top_p)
+        self.task_id =task_id
     
     def run_session(self):
         plan = self.analyst.analyze()
+        print(f'Analyst generated plan: {plan}')
         report = plan
         is_init=True
         self.session_history["plan"] = plan
@@ -27,8 +30,11 @@ class Session(object):
 
             naivecode = self.coder.implement(report, is_init)
             method_name = find_method_name(naivecode)
+            #print(f'method_name', method_name)
             if method_name:
                 code = naivecode
+            
+            print(code)
                 
             if code.strip() == "":
                 if i == 0:
@@ -42,20 +48,26 @@ class Session(object):
                 break
             
             tests = self.tester.test(code)
+            #print(f'tests: {tests[0:20]}')
             test_report = code_truncate(tests)
+            # print(test_report)
             answer_report = unsafe_execute(self.before_func+code+'\n'+test_report+'\n'+f'check({method_name})', '')
             report = f'The compilation output of the preceding code is: {answer_report}'
 
             is_init = False
             self.session_history['Round_{}'.format(i)] = {"code": code, "report": report}
-
+            # if i>0:
+            #     print(f'{self.task_id} Round_{i}: {answer_report}, code: {code}, report: {answer_report}')
             if (plan == "error") or (code == "error") or (report == "error"):
                 code = "error"
+                #print(f'code: error')
                 break
             
             if answer_report == "Code Test Passed.":
+                #print(f'{self.task_id} Round_{i}: {answer_report},  report: Code Test Passed.')
                 break
-
+                #print(f'{self.task_id} Round_{i} report: {answer_report}')
+        
         self.analyst.itf.clear_history()
         self.coder.itf.clear_history()
         self.tester.itf.clear_history()
@@ -65,6 +77,9 @@ class Session(object):
     def run_analyst_coder(self):
         plan = self.analyst.analyze()
         is_init=True
+        #print(f'Analyst generated plan: {plan}')
+        # plan=plan[0:len(plan)//2]
+        #print(f'After cutting plan: {plan}')
         self.session_history["plan"] = plan
         code = self.coder.implement(plan, is_init)
 
@@ -148,7 +163,8 @@ def unsafe_execute(code, report):
 
             # Disable functionalities that can make destructive changes to the test.
             reliability_guard()
-
+            # print("Code to be executed:\n", code)
+            # print("Report to be executed:\n", report)
             # Construct the check program and run it.
             check_program = (
                 code + report
@@ -162,6 +178,12 @@ def unsafe_execute(code, report):
                         exec(check_program, exec_globals)
                 result = "Code Test Passed."
             except AssertionError as e:
+                error_details = traceback.format_exc()
+                with open("assertion_error.log", "a") as f:                 
+                    f.write("Error Details:\n")
+                    f.write(error_details)
+                    f.write("\n\nExecuted Code (code+report):\n")
+                    f.write(check_program)
                 result = f"failed with AssertionError. {e}"
             except TimeoutException:
                 result = "timed out"

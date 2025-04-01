@@ -47,21 +47,21 @@ exec_result = evaluate_with_test_code(handled_solutions, timeout=10)
 print('pass@1:')
 pass_at_K(exec_result, k=[1])
 
-if args.dataset == "humaneval":
-    test_case_path= 'data/HumanEval_test_case_ET.jsonl'
-    with open(test_case_path, 'r') as f:
-        test_cases = [json.loads(line) for line in f]
+# if args.dataset == "humaneval":
+#     test_case_path= 'data/HumanEval_test_case_ET.jsonl'
+#     with open(test_case_path, 'r') as f:
+#         test_cases = [json.loads(line) for line in f]
         
-    test_cases_dict = {}
-    for case in test_cases:
-        test = build_test_method(case['test_case_list'], "", case['entry_point'])
-        test_cases_dict[case['task_id']] = test
+#     test_cases_dict = {}
+#     for case in test_cases:
+#         test = build_test_method(case['test_case_list'], "", case['entry_point'])
+#         test_cases_dict[case['task_id']] = test
 
 
-for solution in handled_solutions:
-    solution['test'] =test_cases_dict[solution['task_id']]
+# for solution in handled_solutions:
+#     solution['test'] =test_cases_dict[solution['task_id']]
 
-exec_result_T = evaluate_with_test_code(handled_solutions, timeout=10)
+# exec_result_T = evaluate_with_test_code(handled_solutions, timeout=10)
 
-print('pass@1 - ET:')
-pass_at_K(exec_result_T, k=[1])
+# print('pass@1 - ET:')
+# pass_at_K(exec_result_T, k=[1])

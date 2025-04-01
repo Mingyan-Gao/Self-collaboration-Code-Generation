@@ -10,7 +10,7 @@ from utils import code_truncate, construct_system_message
 
 
 class Analyst(object):
-    def __init__(self, TEAM, ANALYST, requirement, model='gpt-3.5-turbo-0301', majority=1, max_tokens=512,
+    def __init__(self, TEAM, ANALYST, requirement, model='gemini-2.0-flash', majority=1, max_tokens=512,
                                 temperature=0.0, top_p=1.0):
         self.model = model
         self.majority = majority
@@ -47,7 +47,7 @@ class Analyst(object):
     def history_message_append(self, system_message, role="user"):
         self.history_message.append({
             "role": role,
-            "content": system_message
+            "parts": [system_message]
         })
 
 

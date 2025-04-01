@@ -110,6 +110,8 @@ def pass_at_K(results, k = [1, 10, 100]):
     correct = np.array(correct)
 
     ks = k
+
+    print(f"correct: {np.count_nonzero(correct)}")
     pass_at_k = {f"pass@{k}": round(_estimate_pass_at_k(total, correct, k).mean(), 4)
                  for k in ks if (total >= k).all()}
     logger.info(pass_at_k)

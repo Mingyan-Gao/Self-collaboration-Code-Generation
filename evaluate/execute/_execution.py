@@ -166,6 +166,7 @@ def check_correctness(task_id: str, prompt: str, completion: str, test: str, ent
             rmtree = shutil.rmtree
             rmdir = os.rmdir
             chdir = os.chdir
+            unlink = os.unlink
 
             # Disable functionalities that can make destructive changes to the test.
             reliability_guard()
@@ -183,13 +184,21 @@ def check_correctness(task_id: str, prompt: str, completion: str, test: str, ent
                 result.append("passed")
             except TimeoutException:
                 result.append("timed out")
+                print(f"task_id {task_id} timed out")
             except BaseException as e:
                 result.append(f"failed: {e}")
-
-            # Needed for cleaning up.
-            shutil.rmtree = rmtree
-            os.rmdir = rmdir
-            os.chdir = chdir
+                print(f"task_id {task_id} failed: {e}")
+                with open("/users/Claire/Self-collaboration-Code-Generation/error_humaneval_notester.log", "a") as f:   
+                    f.write(f"task_id {task_id} failed: {e}\n")
+                    f.write("Code:\n")
+                    f.write(check_program)
+                    f.write("\n\n")
+            finally:
+                # Needed for cleaning up.
+                shutil.rmtree = rmtree
+                os.rmdir = rmdir
+                os.chdir = chdir
+                os.unlink = unlink 
 
     manager = multiprocessing.Manager()
     result = manager.list()
