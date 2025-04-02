@@ -8,6 +8,12 @@ bash run.sh
 # evaluate
 bash evaluate.sh
 ```
+
+## Add DS-1000
+ds1000_gemini.py run generation framework on DS-1000   
+ds1000_direct_gemini.py directly call gemini     
+results folder has the result error rate and logging result reason (empty fail reason mean assertion error)     
+data has the original ds-1000 dataset and the generated answer     
  
 ## Citation
 ```
