@@ -57,18 +57,6 @@ def check_correctness(program: str, timeout: float,
             except BaseException as e:
                 result.append(f"failed: {e}")
                 print(f"task_id {completion_id} failed: {e}")
-                log_data = {
-                    "completion_id": completion_id,
-                    "fail_reason": str(e)
-                }
-                # Write the log data to a JSON file.
-                log_file = os.path.join("/users/Claire/Self-collaboration-Code-Generation/results", f"failed_selfcol.json")
-                with open(log_file, "a") as f:
-                    f.write(json.dumps(log_data) + "\n")
-                individual_failed_file = os.path.join(FAILED_DIR, f"failed_{completion_id}.py")
-                with open(individual_failed_file, "w") as fw:
-                    fw.write(check_program)
-                print(f"Saved failing code to {individual_failed_file}")
             finally:
                 # Needed for cleaning up.
                 shutil.rmtree = rmtree

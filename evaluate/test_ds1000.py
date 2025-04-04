@@ -76,15 +76,18 @@ def postprocess(code: List | str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--model",
+        "--input_file",
         type=str,
-        default="codex002",
-        help="which results to run",
+        default="data/selfcol-answers.jsonl"
+    )
+    parser.add_argument(
+        "--output_file",
+        type=str,
+        default="results/selfcol-result.txt"
     )
     args = parser.parse_args()
-    generated_code = [json.loads(l) for l in open(f"data/selfcol-{args.model}-ds1000-answers.jsonl", "r").readlines()]
+    generated_code = [json.loads(l) for l in open(args.input_file, "r").readlines()]
     answers = [postprocess(l['code']) for l in generated_code]
-    print(args.model)
     summary = eval_ds1000(answers)
-    with open(f'results/selfcol-{args.model}-result.txt', 'w') as f:
+    with open(args.output_file, 'w') as f:
         f.write(summary)

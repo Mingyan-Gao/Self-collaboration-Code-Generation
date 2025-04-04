@@ -5,8 +5,10 @@ import argparse
 import tqdm
 import time
 
+
 from core import interface
 from utils import code_truncate, construct_system_message
+from roles.prompts import get_ds1000_analyzer_prompt
 
 
 class Analyst(object):
@@ -18,7 +20,7 @@ class Analyst(object):
         self.temperature = temperature
         self.top_p = top_p
         self.history_message = []
-
+        self.requirement=requirement
         self.itf = interface.ProgramInterface(
             stop='',
             verbose=False,
@@ -30,8 +32,9 @@ class Analyst(object):
 
 
     def analyze(self):
+        analyst_prompt=get_ds1000_analyzer_prompt(self.requirement)
         try:
-            responses = self.itf.run(prompt=self.history_message, majority_at = self.majority, max_tokens=self.max_tokens, temperature=self.temperature, top_p=self.top_p)
+            responses = self.itf.run(prompt=analyst_prompt, majority_at = self.majority, max_tokens=self.max_tokens, temperature=self.temperature, top_p=self.top_p)
         except Exception as e:
             print(e)
             print("analyze fail")
@@ -39,10 +42,9 @@ class Analyst(object):
             return "error"
 
         plan = responses[0]
-
         self.history_message_append(plan, "assistant")
     
-        return plan
+        return analyst_prompt,plan
     
     def history_message_append(self, system_message, role="user"):
         self.history_message.append({

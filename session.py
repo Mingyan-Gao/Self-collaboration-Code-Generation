@@ -7,7 +7,7 @@ import traceback
 
 class Session(object):
     def __init__(self, TEAM, ANALYST, PYTHON_DEVELOPER, TESTER, requirement, model='gemini-2.0-flash', majority=1, max_tokens=512,
-                                temperature=0.0, top_p=1.0, max_round=4, before_func='', task_id=''):
+                                temperature=0.0, top_p=1.0, max_round=4, before_func='', task_id='', proportion=1):
 
         self.session_history = {}
         self.max_round = max_round
@@ -17,129 +17,137 @@ class Session(object):
         self.coder = Coder(TEAM, PYTHON_DEVELOPER, requirement, model, majority, max_tokens, temperature, top_p)
         self.tester = Tester(TEAM, TESTER, requirement, model, majority, max_tokens, temperature, top_p)
         self.task_id =task_id
+        self.model=model
+        self.proportion=proportion
+        self.temperature=temperature
     
-    def run_session(self):
-        plan = self.analyst.analyze()
-        print(f'Analyst generated plan: {plan}')
-        report = plan
-        is_init=True
-        self.session_history["plan"] = plan
-        code = ""
+    # def run_session(self):
+    #     plan = self.analyst.analyze()
+    #     print(f'Analyst generated plan: {plan}')
+    #     report = plan
+    #     is_init=True
+    #     self.session_history["plan"] = plan
+    #     code = ""
 
-        for i in range(self.max_round):
+    #     for i in range(self.max_round):
 
-            naivecode = self.coder.implement(report, is_init)
-            method_name = find_method_name(naivecode)
-            #print(f'method_name', method_name)
-            if method_name:
-                code = naivecode
+    #         naivecode = self.coder.implement(report, is_init)
+    #         method_name = find_method_name(naivecode)
+    #         #print(f'method_name', method_name)
+    #         if method_name:
+    #             code = naivecode
             
-            print(code)
+    #         print(code)
                 
-            if code.strip() == "":
-                if i == 0:
-                    code = "error"
-                else:
-                    code = self.session_history['Round_{}'.format(i-1)]["code"]
-                break
+    #         if code.strip() == "":
+    #             if i == 0:
+    #                 code = "error"
+    #             else:
+    #                 code = self.session_history['Round_{}'.format(i-1)]["code"]
+    #             break
             
-            if i == self.max_round-1:
-                self.session_history['Round_{}'.format(i)] = {"code": code}
-                break
+    #         if i == self.max_round-1:
+    #             self.session_history['Round_{}'.format(i)] = {"code": code}
+    #             break
             
-            tests = self.tester.test(code)
-            #print(f'tests: {tests[0:20]}')
-            test_report = code_truncate(tests)
-            # print(test_report)
-            answer_report = unsafe_execute(self.before_func+code+'\n'+test_report+'\n'+f'check({method_name})', '')
-            report = f'The compilation output of the preceding code is: {answer_report}'
+    #         tests = self.tester.test(code)
+    #         #print(f'tests: {tests[0:20]}')
+    #         test_report = code_truncate(tests)
+    #         # print(test_report)
+    #         answer_report = unsafe_execute(self.before_func+code+'\n'+test_report+'\n'+f'check({method_name})', '')
+    #         report = f'The compilation output of the preceding code is: {answer_report}'
 
-            is_init = False
-            self.session_history['Round_{}'.format(i)] = {"code": code, "report": report}
-            # if i>0:
-            #     print(f'{self.task_id} Round_{i}: {answer_report}, code: {code}, report: {answer_report}')
-            if (plan == "error") or (code == "error") or (report == "error"):
-                code = "error"
-                #print(f'code: error')
-                break
+    #         is_init = False
+    #         self.session_history['Round_{}'.format(i)] = {"code": code, "report": report}
+    #         # if i>0:
+    #         #     print(f'{self.task_id} Round_{i}: {answer_report}, code: {code}, report: {answer_report}')
+    #         if (plan == "error") or (code == "error") or (report == "error"):
+    #             code = "error"
+    #             #print(f'code: error')
+    #             break
             
-            if answer_report == "Code Test Passed.":
-                #print(f'{self.task_id} Round_{i}: {answer_report},  report: Code Test Passed.')
-                break
-                #print(f'{self.task_id} Round_{i} report: {answer_report}')
+    #         if answer_report == "Code Test Passed.":
+    #             #print(f'{self.task_id} Round_{i}: {answer_report},  report: Code Test Passed.')
+    #             break
+    #             #print(f'{self.task_id} Round_{i} report: {answer_report}')
         
-        self.analyst.itf.clear_history()
-        self.coder.itf.clear_history()
-        self.tester.itf.clear_history()
+    #     self.analyst.itf.clear_history()
+    #     self.coder.itf.clear_history()
+    #     self.tester.itf.clear_history()
 
-        return code, self.session_history
+    #     return code, self.session_history
 
     def run_analyst_coder(self):
-        plan = self.analyst.analyze()
+        analyst_prompt,plan = self.analyst.analyze()
         is_init=True
         #print(f'Analyst generated plan: {plan}')
-        # plan=plan[0:len(plan)//2]
+        slicing=int(len(plan)*self.proportion)
+        if slicing==0: 
+            slicing=1
+        plan=plan[0:slicing]
         #print(f'After cutting plan: {plan}')
         self.session_history["plan"] = plan
-        code = self.coder.implement(plan, is_init)
+        coder_prompt, code = self.coder.implement(plan, is_init)
 
         if (plan == "error") or (code == "error"):
             code = "error"
-
+    
+        with open (f"/users/Claire/Self-collaboration-Code-Generation/logging/selfcol-{self.model}-len{self.proportion}-T{self.temperature}.log","a") as f:
+            f.write(f"=====DS1000-Task {self.task_id}=====\nAnalyst Prompt:{analyst_prompt}\nAnalyst Output:{plan}\nCoder Prompt:{coder_prompt}\nCoder Output:{code}\n\n")
         self.analyst.itf.clear_history()
         self.coder.itf.clear_history()
         self.tester.itf.clear_history()
-
-        return code, self.session_history
-
-
-    def run_coder_tester(self):
-        report = ""
-        is_init=True
-        code = ""
         
-        for i in range(self.max_round):
-
-            naivecode = self.coder.implement(report, is_init)
-            if find_method_name(naivecode):
-                code = naivecode
-
-            if code.strip() == "":
-                if i == 0:
-                    code = self.coder.implement(report, is_init=True)
-                else:
-                    code = self.session_history['Round_{}'.format(i-1)]["code"]
-                break
-            
-            if i == self.max_round-1:
-                self.session_history['Round_{}'.format(i)] = {"code": code}
-                break
-            tests = self.tester.test(code)
-            test_report = code_truncate(tests)
-            answer_report = unsafe_execute(self.before_func+code+'\n'+test_report+'\n'+f'check({method_name})', '')
-            report = f'The compilation output of the preceding code is: {answer_report}'
-
-            is_init = False
-            self.session_history['Round_{}'.format(i)] = {"code": code, "report": report}
-
-            if (code == "error") or (report == "error"):
-                code = "error"
-                break
-            
-            if report == "Code Test Passed.":
-                break
-
-        self.analyst.itf.clear_history()
-        self.coder.itf.clear_history()
-        self.tester.itf.clear_history()
-
         return code, self.session_history
 
-    def run_coder_only(self):
-        plan = ""
-        code = self.coder.implement(plan, is_init=True)
-        self.coder.itf.clear_history()
-        return code, self.session_history
+
+    # def run_coder_tester(self):
+    #     report = ""
+    #     is_init=True
+    #     code = ""
+        
+    #     for i in range(self.max_round):
+
+    #         naivecode = self.coder.implement(report, is_init)
+    #         if find_method_name(naivecode):
+    #             code = naivecode
+
+    #         if code.strip() == "":
+    #             if i == 0:
+    #                 code = self.coder.implement(report, is_init=True)
+    #             else:
+    #                 code = self.session_history['Round_{}'.format(i-1)]["code"]
+    #             break
+            
+    #         if i == self.max_round-1:
+    #             self.session_history['Round_{}'.format(i)] = {"code": code}
+    #             break
+    #         tests = self.tester.test(code)
+    #         test_report = code_truncate(tests)
+    #         answer_report = unsafe_execute(self.before_func+code+'\n'+test_report+'\n'+f'check({method_name})', '')
+    #         report = f'The compilation output of the preceding code is: {answer_report}'
+
+    #         is_init = False
+    #         self.session_history['Round_{}'.format(i)] = {"code": code, "report": report}
+
+    #         if (code == "error") or (report == "error"):
+    #             code = "error"
+    #             break
+            
+    #         if report == "Code Test Passed.":
+    #             break
+
+    #     self.analyst.itf.clear_history()
+    #     self.coder.itf.clear_history()
+    #     self.tester.itf.clear_history()
+
+    #     return code, self.session_history
+
+    # def run_coder_only(self):
+    #     plan = ""
+    #     code = self.coder.implement(plan, is_init=True)
+    #     self.coder.itf.clear_history()
+    #     return code, self.session_history
 
 
 import contextlib

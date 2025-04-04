@@ -9,6 +9,7 @@ import tqdm
 from core import interface
 from utils import code_truncate, construct_system_message
 from roles.instruction import INSTRUCTPLAN, INSTRUCTREPORT, INSTRUCTCODE
+from roles.prompts import get_ds1000_generator_prompt
 
 class Coder(object):
     def __init__(self, TEAM, PYTHON_DEVELOPER, requirement, model='gemini-2.0-flash', majority=1, max_tokens=512,
@@ -33,15 +34,16 @@ class Coder(object):
 
     def implement(self, report, is_init=False):
         self.construct_with_report(report, is_init)
-        
+        #print(self.history_message)
+        generator_prompt=get_ds1000_generator_prompt(self.requirement,report)      
         try:
-            responses = self.itf.run(prompt=self.history_message, majority_at = self.majority, max_tokens=self.max_tokens, temperature=self.temperature, top_p=self.top_p)
+            responses = self.itf.run(prompt=generator_prompt, majority_at = self.majority, max_tokens=self.max_tokens, temperature=self.temperature, top_p=self.top_p)
         except Exception as e:
             print(e)
             print("implement fail")
             time.sleep(5)
-            return "error"
-        
+            return generator_prompt,"error"
+             
         # HumanEval Style
         # if 'gpt' not in self.model:
         #     generation = responses[0][responses[0].find("def"):]
@@ -51,14 +53,11 @@ class Coder(object):
         #     code = code_truncate(responses[0])
 
         # DS-1000 Style
-        code=responses[0]
-
-        
-        
+        code=responses[0]      
         self.history_message = self.history_message[:-1]
         self.history_message_append(code, "assistant")
     
-        return code
+        return generator_prompt,code
     
     def history_message_append(self, system_message, role="user"):
         self.history_message.append({

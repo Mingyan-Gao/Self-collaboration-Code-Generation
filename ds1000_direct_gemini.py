@@ -65,4 +65,4 @@ def run_gemini(model, temperature):
 
 
 ds1000 = [json.loads(l) for l in gzip.open("data/ds1000.jsonl.gz", "rt").readlines()]
-run_gemini('gemini-2.0-flash', 0)
+run_gemini('gemini-1.5-pro', 0)

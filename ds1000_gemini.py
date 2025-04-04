@@ -27,7 +27,7 @@ def main():
     parser.add_argument(
         '--output_path',
         type=str,
-        default='data/selfcol-{model}-ds1000-answers.jsonl',
+        default='data/selfcol-{model}-len{proportion}-T{temperature}-answers.jsonl',
         help='Output file path pattern (use {model} to include the model name)'
     )
     parser.add_argument('--model', type=str, default='gemini-2.0-flash')
@@ -36,6 +36,7 @@ def main():
     parser.add_argument('--majority', type=int, default=1)
     parser.add_argument('--temperature', type=float, default=0.0)
     parser.add_argument('--top_p', type=float, default=0.95)
+    parser.add_argument('--proportion',type=float,default=1)
     args = parser.parse_args()
 
 
@@ -59,7 +60,8 @@ def main():
                 top_p=args.top_p,
                 max_round=args.max_round,
                 before_func="",  # No additional pre-processing for ds1000
-                task_id=problem_id
+                task_id=problem_id,
+                proportion=args.proportion
             )
             code, session_history = session.run_analyst_coder()
         except Exception as e:
@@ -70,10 +72,15 @@ def main():
     with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
         futures = [executor.submit(process_problem, p) for p in ds1000]
         for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures)):
-            responses.append(future.result())
+            responses.append(future.result(timeout=60))
 
     responses.sort(key=lambda x: x['id'])
-    output_filename = args.output_path.format(model=args.model) if '{model}' in args.output_path else args.output_path
+    output_filename = (
+        args.output_path.format(model=args.model, proportion=args.proportion, temperature=args.temperature)
+        if any(token in args.output_path for token in ['{model}', '{proportion}', '{temperature}'])
+        else args.output_path
+    )
+
 
     with open(output_filename, 'w') as f:
         for resp in responses:
